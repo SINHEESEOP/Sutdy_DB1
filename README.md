@@ -153,6 +153,56 @@ txTemplate.executeWithoutResult(status -> {
 });
 ```
 
+### 6단계: JdbcTemplate 도입 (V4, V5)
+
+**구현 클래스**
+- MemberRepositoryV5.java
+- MemberServiceV4Test.java
+
+**개선사항**
+- JdbcTemplate으로 SQL 실행 코드 대폭 간소화
+- SQL 예외를 Spring의 DataAccessException으로 변환
+- RowMapper를 통한 결과 매핑 자동화
+- 완전한 JDBC 보일러플레이트 코드 제거
+
+**장점**
+- 개발자는 SQL 작성에만 집중 가능
+- 자동 리소스 관리 (Connection, PreparedStatement, ResultSet)
+- 일관된 예외 처리 및 변환
+- Spring의 검증된 JDBC 추상화 활용
+
+**주요 특징**
+- `template.update()`: INSERT, UPDATE, DELETE 실행
+- `template.queryForObject()`: 단건 조회
+- `RowMapper`: ResultSet → 객체 변환 자동화
+- 스프링 컨테이너와 완벽한 통합
+
+```java
+// JdbcTemplate 활용 패턴 🎯
+@Override
+public Member save(Member member) {
+    String sql = "insert into member(member_id, money) values (?, ?)";
+    template.update(sql, member.getMemberId(), member.getMoney());
+    return member;
+}
+
+@Override
+public Member findById(String memberId) {
+    String sql = "select * from member where member_id = ?";
+    return template.queryForObject(sql, memberRowMapper(), memberId);
+}
+
+// RowMapper로 결과 매핑 자동화 🔄
+private RowMapper<Member> memberRowMapper() {
+    return (rs, rowNum) -> {
+        Member member = new Member();
+        member.setMemberId(rs.getString("member_id"));
+        member.setMoney(rs.getInt("money"));
+        return member;
+    };
+}
+```
+
 ## 진화 과정 요약
 
 | 단계 | 기술 | 주요 개선점 | 남은 문제점 |
@@ -161,9 +211,8 @@ txTemplate.executeWithoutResult(status -> {
 | V1 | DataSource + 커넥션풀 | 성능 개선, 리소스 안전성 | 트랜잭션 부재 |
 | V2 | 수동 트랜잭션 | 데이터 정합성 보장 | 코드 중복, 높은 결합도 |
 | V3_1 | 트랜잭션 매니저 | 관심사 분리, 기술 독립성 | 보일러플레이트 코드 |
-| V3_2 | 트랜잭션 템플릿 | 코드 간소화, 완전한 추상화 | - |
-
-
+| V3_2 | 트랜잭션 템플릿 | 코드 간소화, 완전한 추상화 | JDBC 코드 중복 |
+| V4, V5 | JdbcTemplate | SQL 실행 코드 완전 추상화, 예외 변환 | - |
 
 ## 핵심 학습 포인트
 
